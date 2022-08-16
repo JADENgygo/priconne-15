@@ -150,7 +150,7 @@
       };
 
 			function create() {
-        swipe = this.rexGestures.add.swipe({dir: '4dir'});
+        swipe = this.rexGestures.add.swipe({dir: '4dir', velocityThreshold: 0});
         cursor = this.input.keyboard.addKeys({ 
             up: Phaser.Input.Keyboard.KeyCodes.UP,
             down: Phaser.Input.Keyboard.KeyCodes.DOWN,
