@@ -150,7 +150,6 @@
       };
 
 			function create() {
-        tap = this.rexGestures.add.tap();
         swipe = this.rexGestures.add.swipe({dir: '4dir'});
         cursor = this.input.keyboard.addKeys({ 
             up: Phaser.Input.Keyboard.KeyCodes.UP,
@@ -224,10 +223,6 @@
       };
 
       const movePiece = () => {
-        // if (tap.isTapped) {
-        //   console.log("tap")
-        // }
-        // else
         if (Phaser.Input.Keyboard.JustDown(cursor.up) || swipe.up) {
           outer:
           for (let y = 0; y < 4; ++y) {
