@@ -1,0 +1,354 @@
+<html>
+	<head>
+		<meta charSet="utf-8" />
+		<meta name="description" content="プリコネRの15パズル" />
+		<meta name="twitter:card" content="summary" />
+		<meta name="twitter:site" content="@JADENgygo" />
+		<meta property="og:url" content="https://priconne-15.vercel.app" />
+		<meta property="og:title" content="プリコネ15" />
+		<meta property="og:description" content="プリコネRの15パズル" />
+		<meta property="og:image" content="https://priconne-15.vercel.app/img/peko.png" />
+		<meta name="viewport" content="width=800" />
+		<title>プリコネ15</title>
+		<link rel="icon" href="img/peko.png" />
+		<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+		<style>
+			.content {
+			  position: relative;
+			  min-height: 100vh;
+			  padding: 0 0 150px 0;
+			}
+			footer {
+			  position: absolute;
+			  bottom: 0;
+			  width: 100%;
+			}
+		</style>
+	</head>
+	<body class="text-center">
+		<div class="content">
+      <p class="fs-1 pt-3">プリコネ15</p>
+      <p class="fw-bold">操作方法</p>
+      <p>スワイプ (モバイル), 矢印キー (PC)</p>
+      <div id="game"></div>
+			<footer class="bg-secondary bg-opacity-25 text-center pt-3 pb-3">
+				<div class="mb-1">
+					<a href="https://twitter.com/@JADENgygo" class="link-dark me-1"><img src="img/twitter.svg" /></a>
+					<a href="https://priconne-portfolio.vercel.app" class="link-dark">プリコネツール</a>
+				</div>
+				<div>画像: &copy; Cygames, Inc.</div>
+			</footer>
+		</div>
+		<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+		<script src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js"></script>
+		<script>
+			const config = {
+				parent: "game",
+				type: Phaser.AUTO,
+				width: 600,
+				height: 630,
+				physics: {
+					default: 'arcade',
+					arcade: {
+						gravity: { y: 200 }
+					}
+				},
+				scene: {
+					preload: preload,
+					create: create,
+					update: update,
+				},
+        fps: 30,
+			};
+
+			const game = new Phaser.Game(config);
+
+			function preload() {
+        this.load.image("theme0", "img/theme0.webp");
+        this.load.image("theme1", "img/theme1.webp");
+        this.load.image("theme2", "img/theme2.webp");
+        this.load.scenePlugin('rexgesturesplugin', 'https://raw.githubusercontent.com/rexrainbow/phaser3-rex-notes/master/dist/rexgesturesplugin.min.js', 'rexGestures', 'rexGestures');
+			}
+
+      let state = 0; // 0: パズル選択, 1: プレイ中, 2: クリア
+      let theme = 0;
+      let boards = [];
+
+      let swipe;
+      let cursor;
+
+      let themeImages;
+      let themeDialog;
+      let themeHeader;
+      let themeNames;
+      let themeCursor;
+      let themeSelect;
+      let reset;
+      let beat;
+      const pieces = [[], [], []];
+      const frames = [];
+
+      const init = () => {
+        state = 0;
+        theme = 0;
+        boards = [];
+        for (let y = 0; y < 4; ++y) {
+          boards[y] = [];
+          for (let x = 0; x < 4; ++x) {
+            boards[y][x] = x + y * 4;
+            if (x === 3 && y === 3) {
+              break;
+            }
+            pieces.forEach(e => {
+              e[x + y * 4].x = 300;
+              e[x + y * 4].y = 300 + 30;
+            });
+          }
+        }
+        let i = 0;
+        while (i < 100) {
+          const p1 = Math.trunc(Math.random() * 1000) % 15;
+          const p2 = Math.trunc(Math.random() * 1000) % 15;
+          if (p1 == p2) {
+            continue;
+          }
+          const buf = boards[Math.trunc(p1 / 4)][p1 % 4];
+          boards[Math.trunc(p1 / 4)][p1 % 4] = boards[Math.trunc(p2 / 4)][p2 % 4];
+          boards[Math.trunc(p2 / 4)][p2 % 4] = buf;
+          ++i;
+        }
+
+        themeImages[0].visible = true;
+        themeImages[1].visible = false;
+        themeImages[2].visible = false;
+        themeDialog.visible = true;
+        themeHeader.visible = true;
+        themeNames.forEach(e => e.visible = true);
+        themeCursor.y = 240;
+        themeCursor.visible = true;
+        themeSelect.visible = true;
+
+        reset.visible = false;
+        pieces.forEach(e => e.forEach(e_ => e_.visible = false));
+        frames.forEach(e => e.visible = false);
+        beat.visible = false;
+      };
+
+      const changeScene = () => {
+        themeImages.forEach(e => e.visible = false);
+        themeDialog.visible = false;
+        themeHeader.visible = false;
+        themeNames.forEach(e => e.visible = false);
+        themeCursor.visible = false;
+        themeSelect.visible = false;
+        state = 1;
+
+        reset.visible = true;
+        pieces[theme].forEach(e => e.visible = true);
+        frames.forEach(e => e.visible = true);
+      };
+
+			function create() {
+        tap = this.rexGestures.add.tap();
+        swipe = this.rexGestures.add.swipe({dir: '4dir'});
+        cursor = this.input.keyboard.addKeys({ 
+            up: Phaser.Input.Keyboard.KeyCodes.UP,
+            down: Phaser.Input.Keyboard.KeyCodes.DOWN,
+            right: Phaser.Input.Keyboard.KeyCodes.RIGHT,
+            left: Phaser.Input.Keyboard.KeyCodes.LEFT,
+            enter: Phaser.Input.Keyboard.KeyCodes.ENTER,
+            esc: Phaser.Input.Keyboard.KeyCodes.ESC,
+        });
+
+        themeImages = [
+          this.add.image(300, 300 + 30, "theme0").setScale(0.3125),
+          this.add.image(300, 300 + 30, "theme1").setScale(0.3125),
+          this.add.image(300, 300 + 30, "theme2").setScale(0.3125)
+        ];
+        themeDialog = this.add.graphics().fillStyle(0xffffff, 0.75).fillRoundedRect(100, 100, 400, 500, 15);
+        themeHeader = this.add.text(220, 140, "パズル選択", {font: "bold 30px sans-serif", fill: "#000"});
+        themeNames = [
+          this.add.text(250, 240, "美食殿", {font: "30px sans-serif", fill: "#000"}).setInteractive(),
+          this.add.text(140, 340, "トゥインクルウィッシュ", {font: "30px sans-serif", fill: "#000"}).setInteractive(),
+          this.add.text(220, 440, "なかよし部", {font: "30px sans-serif", fill: "#000"}).setInteractive()
+        ];
+        themeNames.forEach((e, i) => {
+          e.on("pointerdown", () => {
+            theme = i;
+            themeCursor.y = 240 + 100 * i;
+          });
+        })
+        themeCursor = this.add.text(0, 240, "               [                                         ]", {font: "bold 30px sans-serif", fill: "#000"}).setInteractive()
+        themeSelect = this.add.text(400, 540, "決定", {font: "bold 30px sans-serif", fill: "#000"}).setInteractive()
+          .on("pointerdown", () => changeScene());
+
+        reset = this.add.text(10, 7.5, "パズル選択に戻る", {font: "bold 15px sans-serif", fill: "#ffffff"}).setInteractive();
+        reset.on("pointerdown", () => init());
+        for (let y = 0; y < 4; ++y) {
+          for (let x = 0; x < 4; ++x) {
+            if (x === 3 && y === 3) {
+              break;
+            }
+            for (let i = 0; i < 3; ++i) {
+              const piece = this.add.image(300, 300 + 30, "theme" + i).setScale(0.3125).setCrop(1920 / 4 * x, 1920 / 4 * y, 1920 / 4, 1920 / 4);
+              pieces[i].push(piece);
+            }
+            const frame = this.add.rectangle(75 + x * 150, 75 + y * 150 + 30, 150, 150).setStrokeStyle(2, "#000").setDepth(1);
+            frames.push(frame);
+          }
+        }
+        beat = this.add.text(265, 7.5, "クリア！", {font: "bold 15px sans-serif", fill: "#ffffff"});
+
+        init();
+			}
+
+      const selectTheme = () => {
+        if (Phaser.Input.Keyboard.JustDown(cursor.up)) {
+          theme = theme === 0 ? 0 : theme - 1;
+        }
+        else if (Phaser.Input.Keyboard.JustDown(cursor.down)) {
+          theme = theme === 2 ? 2 : theme + 1;
+        }
+        else if (Phaser.Input.Keyboard.JustDown(cursor.enter)) {
+          changeScene();
+          return true;
+        }
+        return false;
+      };
+
+      const showThemeSelection = () => {
+        themeImages.forEach(e => e.visible = false);
+        themeImages[theme].visible = true;
+        themeCursor.y = 240 + 100 * theme;
+      };
+
+      const movePiece = () => {
+        // if (tap.isTapped) {
+        //   console.log("tap")
+        // }
+        // else
+        if (Phaser.Input.Keyboard.JustDown(cursor.up) || swipe.up) {
+          outer:
+          for (let y = 0; y < 4; ++y) {
+            for (let x = 0; x < 4; ++x) {
+              if (boards[y][x] === 15 && y != 3) {
+                const buf = boards[y][x];
+                boards[y][x] = boards[y + 1][x];
+                boards[y + 1][x] = buf;
+                break outer;
+              }
+            }
+          }
+        }
+        else if (Phaser.Input.Keyboard.JustDown(cursor.down) || swipe.down) {
+          outer:
+          for (let y = 0; y < 4; ++y) {
+            for (let x = 0; x < 4; ++x) {
+              if (boards[y][x] === 15 && y != 0) {
+                const buf = boards[y][x];
+                boards[y][x] = boards[y - 1][x];
+                boards[y - 1][x] = buf;
+                break outer;
+              }
+            }
+          }
+        }
+        else if (Phaser.Input.Keyboard.JustDown(cursor.left) || swipe.left) {
+          outer:
+          for (let y = 0; y < 4; ++y) {
+            for (let x = 0; x < 4; ++x) {
+              if (boards[y][x] === 15 && x != 3) {
+                const buf = boards[y][x];
+                boards[y][x] = boards[y][x + 1];
+                boards[y][x + 1] = buf;
+                break outer;
+              }
+            }
+          }
+        }
+        else if (Phaser.Input.Keyboard.JustDown(cursor.right) || swipe.right) {
+          outer:
+          for (let y = 0; y < 4; ++y) {
+            for (let x = 0; x < 4; ++x) {
+              if (boards[y][x] === 15 && x != 0) {
+                const buf = boards[y][x];
+                boards[y][x] = boards[y][x - 1];
+                boards[y][x - 1] = buf;
+                break outer;
+              }
+            }
+          }
+        }
+        else if (Phaser.Input.Keyboard.JustDown(cursor.esc)) {
+          init();
+        }
+      };
+
+      const gameOver = () => {
+        let over = true;
+        outer:
+        for (let y = 0; y < 4; ++y) {
+          for (let x = 0; x < 4; ++x) {
+            if (boards[y][x] !== x + y * 4) {
+              over = false;
+              break outer;
+            }
+          }
+        }
+        if (over) {
+          state = 2;
+        }
+      };
+
+      const showBoard = () => {
+        for (let y = 0; y < 4; ++y) {
+          for (let x = 0; x < 4; ++x) {
+            if (boards[y][x] === 15) {
+              continue;
+            }
+            const bx = boards[y][x] % 4;
+            const by = Math.trunc(boards[y][x] / 4);
+            pieces[theme][boards[y][x]].x = 300 + (x - bx) * 150;
+            pieces[theme][boards[y][x]].y = 300 + (y - by) * 150 + 30;
+          }
+        }
+      }
+
+      const returnToTitle = () => {
+        if (Phaser.Input.Keyboard.JustDown(cursor.esc)) {
+          init();
+          return true;
+        }
+        return false;
+      };
+
+      const showResult = () => {
+        pieces[theme].forEach(e => e.visible = false);
+        frames.forEach(e => e.visible = false);
+        themeImages[theme].visible = true;
+        beat.visible = true;
+      };
+
+			function update() {
+        if (state === 0) {
+          const transited = selectTheme();
+          if (!transited) {
+            showThemeSelection();
+          }
+        }
+        if (state === 1) {
+          movePiece();
+          gameOver();
+          showBoard();
+        }
+        if (state === 2) {
+          const transited = returnToTitle();
+          if (!transited) {
+            showResult();
+          }
+        }
+			}
+		</script>
+	</body>
+</html>
